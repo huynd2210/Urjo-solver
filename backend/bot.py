@@ -96,20 +96,29 @@ def handle_login(page):
     print(f"\n[Login] Navigating to profile for email: {email}")
     page.goto("https://urjo.com/profile/")
     
-    # Check if already logged in (look for sign out or lack of email input)
     try:
-        email_input = page.wait_for_selector("input[placeholder='Email']", timeout=5000)
-        if email_input:
-            email_input.fill(email)
-            page.click("button:has-text('Continue')")
-            print("    [Login] Email submitted. Please check your inbox.")
-            print("\n" + "!" * 60)
-            print("  ACTION REQUIRED: Please enter the verification code in the browser.")
-            print("  Once you are logged in and see your profile, return here.")
-            print("!" * 60 + "\n")
-            input("  Press Enter here to continue solving after you are logged in...")
-    except Exception:
-        print("    [Login] No email input found. Assuming already logged in.")
+        # Check if already logged in (look for Logout button)
+        if page.query_selector("button:has-text('Logout')"):
+            print("    [Login] Already logged in.")
+        else:
+            email_input = page.wait_for_selector("input[placeholder='Email']", timeout=5000)
+            if email_input:
+                email_input.fill(email)
+                page.click("button:has-text('Continue')")
+                print("    [Login] Email submitted. Please enter the verification code in the browser.")
+                
+                # Wait for the user to finish login (Logout button appears)
+                page.wait_for_selector("button:has-text('Logout')", timeout=120000)
+                print("    [Login] Login success detected.")
+        
+        # Click back to return to the puzzle
+        print("    [Login] Returning to game...")
+        page.click("a:has-text('Back')")
+        time.sleep(1)
+        
+    except Exception as e:
+        print(f"    [Login] Flow timed out or interrupted: {e}")
+        input("    Please ensure you are logged in, then press Enter to continue...")
 
 def run(count):
     with sync_playwright() as p:

@@ -1,0 +1,8 @@
+.env
+data/
+__pycache__/
+*.pyc
+login_debug.png
+login_error.png
+.tempmediaStorage/
+*.txt

@@ -1,6 +1,7 @@
-from playwright.sync_api import sync_playwright
-import time
+import argparse
 import copy
+import time
+from playwright.sync_api import sync_playwright
 from solver import solve_urjo
 
 def find_game_grid(page):
@@ -45,13 +46,48 @@ def extract_board(page, grid_handle, n):
         return { grid: g, clues: clues };
     }''', [grid_handle, n])
 
-def run():
+def solve_and_apply(page, grid_handle, n):
+    """Extract, solve, and apply solution to the current grid."""
+    state = extract_board(page, grid_handle, n)
+    
+    print(f"\n    Board Extraction (1=Blue, 2=Red):")
+    for r in range(n):
+        print(f"    Row {r}: {state['grid'][r]}")
+    
+    print("    Solving...")
+    sol = solve_urjo(copy.deepcopy(state['grid']), state['clues'])
+    if not sol:
+        print("    FAILED: Solver could not find a solution.")
+        return False
+
+    print("    Applying Solution...")
+    for r in range(n):
+        for c in range(n):
+            if state['grid'][r][c] != 0: continue
+            
+            target = sol[r][c]
+            rect = page.evaluate('''([grid, idx]) => {
+                const el = grid.children[idx];
+                const r = el.getBoundingClientRect();
+                return {x: r.left + r.width/2, y: r.top + r.height/2};
+            }''', [grid_handle, r * n + c])
+            
+            # 2 is Red -> Left Click
+            # 1 is Blue -> Right Click
+            if target == 2:
+                page.mouse.click(rect['x'], rect['y'], button='left')
+            else:
+                page.mouse.click(rect['x'], rect['y'], button='right')
+            time.sleep(0.1)
+    return True
+
+def run(count):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         page = browser.new_page()
         page.set_viewport_size({"width": 1280, "height": 900})
         
-        print("="*40 + "\nURJO BOT: CORRECTED MAPPING\n" + "="*40)
+        print("="*40 + f"\nURJO BOT: SOLVING {count} PUZZLES\n" + "="*40)
         page.goto("https://urjo.com/")
         time.sleep(1)
         
@@ -63,12 +99,11 @@ def run():
             print("    Start button not found, assuming game already started.")
         time.sleep(2)
             
-        # 2. Solid mode & Scroll Up
-        print("[2] Toggling Solid Mode & Scrolling Up...")
+        # 2. Solid mode (Sticky settings, only check once)
+        print("[2] Ensuring Solid Mode...")
         page.evaluate("window.scrollTo(0, 1000)") 
         time.sleep(0.5)
         
-        # Check if checked first
         is_checked = page.evaluate('''() => {
             const labels = Array.from(document.querySelectorAll('label'));
             const solidLabel = labels.find(l => l.textContent.includes('Solid'));
@@ -86,53 +121,46 @@ def run():
         time.sleep(0.5)
         page.evaluate("window.scrollTo(0, 0)") 
         time.sleep(1)
-        
-        # 3. Detect
-        grid_handle = find_game_grid(page)
-        if not grid_handle:
-            print("    Error: Could not find grid.")
-            return
-            
-        n = int(page.evaluate('(g) => Math.sqrt(g.children.length)', grid_handle))
-        state = extract_board(page, grid_handle, n)
-        
-        print("\n[3] Board Extraction (1=Blue, 2=Red):")
-        for r in range(n):
-            print(f"    Row {r}: {state['grid'][r]}")
-        
-        # 4. Solve
-        print("\n[4] Solving...")
-        sol = solve_urjo(copy.deepcopy(state['grid']), state['clues'])
-        if not sol:
-            print("    FAILED: Solver could not find a solution.")
-            return
 
-        # 5. Apply
-        print("\n[5] Applying Solution...")
-        for r in range(n):
-            for c in range(n):
-                if state['grid'][r][c] != 0: continue
-                
-                target = sol[r][c]
-                rect = page.evaluate('''([grid, idx]) => {
-                    const el = grid.children[idx];
-                    const r = el.getBoundingClientRect();
-                    return {x: r.left + r.width/2, y: r.top + r.height/2};
-                }''', [grid_handle, r * n + c])
-                
-                # 2 is Red -> Left Click
-                # 1 is Blue -> Right Click
-                if target == 2:
-                    print(f"    ({r},{c}) -> RED (Left Click)")
-                    page.mouse.click(rect['x'], rect['y'], button='left')
-                else:
-                    print(f"    ({r},{c}) -> BLUE (Right Click)")
-                    page.mouse.click(rect['x'], rect['y'], button='right')
-                time.sleep(0.2)
-        
-        print("\n[6] Done!")
+        # 3. Main loop
+        for i in range(count):
+            print(f"\n--- Puzzle {i+1}/{count} ---")
+            
+            # Find grid
+            grid_handle = find_game_grid(page)
+            if not grid_handle:
+                print("    Error: Could not find grid. Retrying...")
+                time.sleep(2)
+                grid_handle = find_game_grid(page)
+                if not grid_handle:
+                    print("    Critical Error: Grid not found.")
+                    break
+            
+            n = int(page.evaluate('(g) => Math.sqrt(g.children.length)', grid_handle))
+            success = solve_and_apply(page, grid_handle, n)
+            
+            if success and i < count - 1:
+                print("    Puzzle solved! Waiting for 'Next Challenge' button...")
+                try:
+                    next_btn = page.wait_for_selector("button:has-text('Next Challenge')", timeout=10000)
+                    if next_btn:
+                        next_btn.click()
+                        print("    Clicked 'Next Challenge'.")
+                        time.sleep(2) # Wait for new grid to load
+                except Exception as e:
+                    print(f"    Warning: 'Next Challenge' button didn't appear as expected: {e}")
+                    # Try to see if grid changed anyway or if we need to click something else
+            elif not success:
+                print("    Skipping next challenge due to failure.")
+                break
+
+        print("\n[Done] All requested puzzles completed.")
         input("Press Enter to close...")
         browser.close()
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser(description="Automate Urjo puzzles.")
+    parser.add_argument("--count", type=int, default=1, help="Number of puzzles to solve.")
+    args = parser.parse_args()
+    
+    run(args.count)

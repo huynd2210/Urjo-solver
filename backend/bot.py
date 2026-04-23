@@ -87,41 +87,61 @@ def solve_and_apply(page, grid_handle, n):
     return True
 
 def handle_login(page):
-    """Handle the email login flow on the profile page."""
+    """Handle the email login flow with verbose logging."""
     email = os.getenv("USER_EMAIL")
     if not email:
-        print("    Warning: USER_EMAIL not found in .env. Skipping login.")
+        print("    [Login] SKIP: No USER_EMAIL in .env")
         return
 
-    print(f"\n[Login] Navigating to profile for email: {email}")
+    print(f"\n[Login] Step 1: Navigating to https://urjo.com/profile/")
     page.goto("https://urjo.com/profile/")
+    page.wait_for_load_state("networkidle")
     
     try:
-        # Check if already logged in (look for Logout button)
+        print("    [Login] Step 2: Checking session state...")
         if page.query_selector("button:has-text('Logout')"):
-            print("    [Login] Already logged in.")
+            print("    [Login] STATUS: Already logged in.")
         else:
-            # Try multiple selectors for the email input
-            email_input = page.wait_for_selector("input[name='email'], input[placeholder*='Email'], input[type='email'], input", timeout=10000)
-            if email_input:
+            print("    [Login] STATUS: Not logged in. Finding email field...")
+            
+            # Try to find the specific email input
+            selector = "input[placeholder*='Email'], input[name='email'], input[type='email']"
+            email_input = page.wait_for_selector(selector, timeout=10000)
+            
+            print(f"    [Login] Step 3: Typing email '{email}'...")
+            email_input.click()
+            page.keyboard.type(email, delay=50)
+            
+            # Verification
+            typed_val = email_input.evaluate("el => el.value")
+            print(f"    [Login] Step 4: Verified input content: '{typed_val}'")
+            
+            if typed_val != email:
+                print("    [Login] WARNING: Content mismatch, forcing fill...")
                 email_input.fill(email)
-                # Try multiple selectors for the submit button
-                page.click("button:has-text('Continue'), button:has-text('Save'), button[type='submit']")
-                print("    [Login] Email submitted. Please enter the verification code in the browser.")
-                
-                # Wait for the user to finish login (Logout button appears)
-                page.wait_for_selector("button:has-text('Logout')", timeout=120000)
-                print("    [Login] Login success detected.")
+
+            # Submit
+            btn_selector = "button:has-text('Continue'), button:has-text('Save'), button[type='submit']"
+            print(f"    [Login] Step 5: Clicking submit button ({btn_selector})...")
+            page.click(btn_selector, force=True)
+            
+            print("\n" + "!" * 60)
+            print("  ACTION REQUIRED: Enter the verification code in the browser.")
+            print("!" * 60 + "\n")
+            
+            # Wait for Logout button
+            print("    [Login] Step 6: Waiting for Logout button to appear...")
+            page.wait_for_selector("button:has-text('Logout')", timeout=120000)
+            print("    [Login] Step 7: Success! Logged in.")
         
-        # Return to game directly via URL (safer than clicking back)
-        print("    [Login] Returning to game...")
+        print("    [Login] Step 8: Returning to game...")
         page.goto("https://urjo.com/")
-        time.sleep(1)
+        page.wait_for_load_state("networkidle")
         
     except Exception as e:
-        print(f"    [Login] Flow timed out or failed: {e}")
-        page.screenshot(path="login_error.png")
-        input("    Please ensure you are logged in manually, then press Enter to continue...")
+        print(f"    [Login] !!! SNAG: {e}")
+        page.screenshot(path="login_debug.png")
+        input("    [Login] Paused. Check 'login_debug.png' and press Enter to skip/continue...")
 
 def run(count):
     with sync_playwright() as p:

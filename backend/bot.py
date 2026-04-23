@@ -1,8 +1,13 @@
 import argparse
 import copy
 import time
+import os
+from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from solver import solve_urjo
+
+# Load environment variables from the parent directory
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 def find_game_grid(page):
     """Find the game grid and return a JS handle to it + grid size."""
@@ -81,6 +86,31 @@ def solve_and_apply(page, grid_handle, n):
             time.sleep(0.1)
     return True
 
+def handle_login(page):
+    """Handle the email login flow on the profile page."""
+    email = os.getenv("USER_EMAIL")
+    if not email:
+        print("    Warning: USER_EMAIL not found in .env. Skipping login.")
+        return
+
+    print(f"\n[Login] Navigating to profile for email: {email}")
+    page.goto("https://urjo.com/profile/")
+    
+    # Check if already logged in (look for sign out or lack of email input)
+    try:
+        email_input = page.wait_for_selector("input[placeholder='Email']", timeout=5000)
+        if email_input:
+            email_input.fill(email)
+            page.click("button:has-text('Continue')")
+            print("    [Login] Email submitted. Please check your inbox.")
+            print("\n" + "!" * 60)
+            print("  ACTION REQUIRED: Please enter the verification code in the browser.")
+            print("  Once you are logged in and see your profile, return here.")
+            print("!" * 60 + "\n")
+            input("  Press Enter here to continue solving after you are logged in...")
+    except Exception:
+        print("    [Login] No email input found. Assuming already logged in.")
+
 def run(count):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
@@ -88,6 +118,10 @@ def run(count):
         page.set_viewport_size({"width": 1280, "height": 900})
         
         print("="*40 + f"\nURJO BOT: SOLVING {count} PUZZLES\n" + "="*40)
+        
+        # 0. Handle Login
+        handle_login(page)
+        
         page.goto("https://urjo.com/")
         time.sleep(1)
         

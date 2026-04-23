@@ -208,8 +208,13 @@ def run(count):
         
         print("="*40 + f"\nURJO BOT: {count} PUZZLES\n" + "="*40)
         
-        # 1. Login
-        bot.login()
+        # 1. Login (unless bypassed)
+        if not args.no_login:
+            bot.login()
+        else:
+            print("[Login] Bypassed via --no-login flag.")
+            page.goto("https://urjo.com/")
+            page.wait_for_load_state("domcontentloaded")
         
         # 2. Prep
         bot.prepare_game()
@@ -245,5 +250,6 @@ def run(count):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--count", type=int, default=1)
+    parser.add_argument("--no-login", action="store_true", help="Skip the email login flow.")
     args = parser.parse_args()
-    run(args.count)
+    run(args.count, args)

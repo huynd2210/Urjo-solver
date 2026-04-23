@@ -42,7 +42,7 @@ The bot uses **"Solid" spot style** (enabled via the site settings):
 - **Coordinate System**: The bot uses `getBoundingClientRect()` via `page.evaluate` to get precise center coordinates for clicking, ensuring compatibility even if the page scrolls or re-renders.
 - **Solid Mode Toggle**: The bot programmatically checks the "Solid" checkbox. If it's already checked, it avoids clicking it to prevent toggling it off.
 - **Solvability**: The solver uses a deep copy of the grid to avoid in-place corruption during backtracking.
-- **Interactive Mode**: After the initial batch, the bot prompts for a new count or 'q' to quit, maintaining the browser session.
+- **Interactive Mode**: After the initial batch, the bot prompts for a new count or 'q' to quit, maintaining the browser session. Use `--no-login` to skip the email flow.
 - **Data Collection**: All solved puzzles are appended to `data/puzzles.jsonl` with size, initial state, numeric clues, and the solution for AI training.
 
 ## Setup Requirements

@@ -1,0 +1,68 @@
+:root {
+  /* Core palette */
+  --bg-primary: #0f111a;
+  --bg-secondary: #1a1d2d;
+  --bg-card: #22263b;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  
+  /* Tile Colors */
+  --color-empty: #2a2e45;
+  --color-empty-hover: #333854;
+  
+  --color-red: #e11d48;
+  --color-red-glow: rgba(225, 29, 72, 0.4);
+  
+  --color-blue: #0ea5e9;
+  --color-blue-glow: rgba(14, 165, 233, 0.4);
+
+  --color-clue-text: #ffffff;
+  --color-clue-bg: rgba(0, 0, 0, 0.2);
+
+  /* Borders & Shadows */
+  --border-color: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --glow-shadow-red: 0 0 15px var(--color-red-glow), inset 0 0 10px var(--color-red-glow);
+  --glow-shadow-blue: 0 0 15px var(--color-blue-glow), inset 0 0 10px var(--color-blue-glow);
+
+  /* Transitions */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Animations */
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseGlowRed {
+  0% { box-shadow: var(--glow-shadow-red); }
+  50% { box-shadow: 0 0 25px rgba(225, 29, 72, 0.6), inset 0 0 15px rgba(225, 29, 72, 0.6); }
+  100% { box-shadow: var(--glow-shadow-red); }
+}
+
+@keyframes pulseGlowBlue {
+  0% { box-shadow: var(--glow-shadow-blue); }
+  50% { box-shadow: 0 0 25px rgba(14, 165, 233, 0.6), inset 0 0 15px rgba(14, 165, 233, 0.6); }
+  100% { box-shadow: var(--glow-shadow-blue); }
+}
+
+.anim-pop-in {
+  animation: popIn var(--transition-bounce) forwards;
+}

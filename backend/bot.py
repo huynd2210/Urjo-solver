@@ -2,6 +2,8 @@ import argparse
 import copy
 import time
 import os
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 from solver import solve_urjo
@@ -146,6 +148,9 @@ class UrjoBot:
             print("    [Error] Solver failed to find a solution.")
             return False
 
+        # Save data for AI training
+        self.save_puzzle_data(state, sol)
+
         # Apply
         print(f"    [Apply] Clicking cells...")
         for r in range(self.n):
@@ -163,6 +168,24 @@ class UrjoBot:
                 self.page.mouse.click(rect['x'], rect['y'], button=button)
                 time.sleep(0.15)
         return True
+
+    def save_puzzle_data(self, state, solution):
+        """Saves the puzzle and solution for AI training."""
+        data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+        os.makedirs(data_dir, exist_ok=True)
+        
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "size": self.n,
+            "input_grid": state['grid'],
+            "clues": state['clues'],
+            "solution": solution
+        }
+        
+        file_path = os.path.join(data_dir, "puzzles.jsonl")
+        with open(file_path, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+        print(f"    [Data] Saved puzzle to {file_path}")
 
     def next_challenge(self):
         """Moves to the next puzzle."""
@@ -191,18 +214,32 @@ def run(count):
         # 2. Prep
         bot.prepare_game()
 
-        # 3. Solve Loop
-        for i in range(count):
-            print(f"\n--- Puzzle {i+1}/{count} ---")
-            success = bot.solve_and_apply()
+        while True:
+            # 3. Solve Loop
+            for i in range(count):
+                print(f"\n--- Puzzle {i+1}/{count} ---")
+                success = bot.solve_and_apply()
+                
+                if success and i < count - 1:
+                    bot.next_challenge()
+                elif not success:
+                    break
+
+            print("\n[Batch Done] Successfully completed the requested puzzles.")
+            ans = input("\n[Prompt] Continue solving? (Enter a number for more puzzles, or 'q' to quit): ").strip().lower()
             
-            if success and i < count - 1:
+            if ans == 'q' or ans == '':
+                break
+            
+            try:
+                count = int(ans)
+                # Ensure we move to the next puzzle before starting the next batch
                 bot.next_challenge()
-            elif not success:
+            except ValueError:
+                print("    Invalid input. Exiting...")
                 break
 
-        print("\n[Done] Process complete.")
-        input("Press Enter to close...")
+        print("\n[Exit] Closing bot. Goodbye!")
         browser.close()
 
 if __name__ == "__main__":

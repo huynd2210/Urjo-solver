@@ -101,24 +101,27 @@ def handle_login(page):
         if page.query_selector("button:has-text('Logout')"):
             print("    [Login] Already logged in.")
         else:
-            email_input = page.wait_for_selector("input[placeholder='Email']", timeout=5000)
+            # Try multiple selectors for the email input
+            email_input = page.wait_for_selector("input[name='email'], input[placeholder*='Email'], input[type='email'], input", timeout=10000)
             if email_input:
                 email_input.fill(email)
-                page.click("button:has-text('Continue')")
+                # Try multiple selectors for the submit button
+                page.click("button:has-text('Continue'), button:has-text('Save'), button[type='submit']")
                 print("    [Login] Email submitted. Please enter the verification code in the browser.")
                 
                 # Wait for the user to finish login (Logout button appears)
                 page.wait_for_selector("button:has-text('Logout')", timeout=120000)
                 print("    [Login] Login success detected.")
         
-        # Click back to return to the puzzle
+        # Return to game directly via URL (safer than clicking back)
         print("    [Login] Returning to game...")
-        page.click("a:has-text('Back')")
+        page.goto("https://urjo.com/")
         time.sleep(1)
         
     except Exception as e:
-        print(f"    [Login] Flow timed out or interrupted: {e}")
-        input("    Please ensure you are logged in, then press Enter to continue...")
+        print(f"    [Login] Flow timed out or failed: {e}")
+        page.screenshot(path="login_error.png")
+        input("    Please ensure you are logged in manually, then press Enter to continue...")
 
 def run(count):
     with sync_playwright() as p:

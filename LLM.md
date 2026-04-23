@@ -42,8 +42,10 @@ The bot uses **"Solid" spot style** (enabled via the site settings):
 - **Coordinate System**: The bot uses `getBoundingClientRect()` via `page.evaluate` to get precise center coordinates for clicking, ensuring compatibility even if the page scrolls or re-renders.
 - **Solid Mode Toggle**: The bot programmatically checks the "Solid" checkbox. If it's already checked, it avoids clicking it to prevent toggling it off.
 - **Solvability**: The solver uses a deep copy of the grid to avoid in-place corruption during backtracking.
-- **Login Flow**: The bot can handle email-based authentication by navigating to `/profile/`. It reads the target email from a `.env` file and pauses for manual verification code entry.
+- **Interactive Mode**: After the initial batch, the bot prompts for a new count or 'q' to quit, maintaining the browser session.
+- **Data Collection**: All solved puzzles are appended to `data/puzzles.jsonl` with size, initial state, numeric clues, and the solution for AI training.
 
 ## Setup Requirements
 - **Environment**: Create a `.env` file in the root directory with `USER_EMAIL=your_email@example.com`.
-- **Dependencies**: `pip install python-dotenv`
+- **Dependencies**: `pip install python-dotenv playwright`, then `playwright install chromium`.
+- **Storage**: Training data is stored in the `data/` folder.
